@@ -1,0 +1,40 @@
+import {chromium} from '@playwright/test';
+import assert from 'node:assert/strict';
+import {createApp} from '../server/server.mjs';
+import {randomBytes,scryptSync} from 'node:crypto';
+import {once} from 'node:events';
+import {mkdirSync} from 'node:fs';
+const origin='http://127.0.0.1:5199';
+const {server,db}=createApp({database:':memory:',origin});
+const password=randomBytes(24).toString('hex'),salt=randomBytes(16).toString('hex');
+db.prepare('INSERT INTO owner VALUES (1,?,?,?)').run('cindyafidoku0@gmail.com',salt,scryptSync(password,salt,64).toString('hex'));
+server.listen(5199,'127.0.0.1');await once(server,'listening');
+const browser=await chromium.launch({executablePath:process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+mkdirSync('qa',{recursive:true});
+try{
+await page.goto(origin);await page.evaluate(()=>document.fonts.ready);await page.locator('.orbit-center img').first().waitFor();await page.screenshot({path:'qa/home-desktop.png'});
+assert.equal(await page.locator('img').evaluateAll(imgs=>imgs.filter(i=>i.complete&&i.naturalWidth===0).length),0);
+await page.waitForFunction(()=>document.querySelector('#juices .orbit-center img')?.getAttribute('src')?.includes('juice-sobolo'),{},{timeout:8000});
+await page.locator('#juices .orbit-stage').dispatchEvent('pointerdown',{clientX:300,clientY:400});
+await page.locator('#juices .orbit-stage').dispatchEvent('pointerup',{clientX:150,clientY:410});
+assert.match(await page.locator('#juices .orbit-center img').getAttribute('src'),/juice-mango/);
+await page.getByRole('link',{name:'The menu',exact:true}).first().click();await page.getByRole('button',{name:'Sips',exact:true}).click();assert.equal(await page.locator('.product-card').count(),3);
+await page.getByRole('button',{name:'Add Mango sunshine to bag'}).click();await page.getByRole('button',{name:'Open bag, 1 items'}).click();await page.getByLabel('Your name').fill('Browser Test');await page.getByLabel('Email',{exact:true}).fill('browser@example.com');await page.getByLabel('Phone / WhatsApp').fill('+233200000000');await page.getByLabel('Preferred date').fill('2099-01-01');await page.getByRole('button',{name:'Send order request'}).click();await page.getByText('Request received!').waitFor();await page.getByRole('button',{name:'Keep exploring'}).click();
+await page.goto(origin+'/#/book');await page.getByLabel('Your name').fill('Event Test');await page.getByLabel('Email',{exact:true}).fill('event@example.com');await page.getByLabel('Phone / WhatsApp').fill('+233200000000');await page.getByLabel('Occasion').selectOption('Birthday');await page.getByLabel('Number of guests').fill('40');await page.getByLabel('Event date').fill('2099-02-01');await page.getByLabel('Event location').fill('Accra');await page.getByLabel('Service area').selectOption('Accra');await page.getByRole('button',{name:'Request a booking'}).click();await page.getByText('Let’s make it a party.').waitFor();
+await page.goto(origin+'/#/admin');await page.getByLabel('Email',{exact:true}).fill('cindyafidoku0@gmail.com');await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Sign in securely'}).click();await page.getByText('The kitchen desk.').waitFor();await page.getByRole('heading',{name:'Browser Test',exact:true}).waitFor();await page.getByRole('heading',{name:'Event Test',exact:true}).waitFor();await page.getByRole('button',{name:'Website editor',exact:true}).click();
+await page.locator('input[type=file]').first().setInputFiles('public/images/snackle-juices.png');
+await page.getByText('5 of 12 images.',{exact:false}).waitFor();
+await page.getByRole('button',{name:'Publish changes'}).click();await page.getByText('Website changes saved for all visitors.').waitFor();
+const config=await (await page.request.get(origin+'/api/config')).json();assert.equal(config.config.sections[0].images.length,5);assert.match(config.config.sections[0].images[4].src,/^\/media\//);
+await page.getByRole('button',{name:'Sign out'}).click();await page.waitForURL(origin+'/#/');
+await page.locator('#juices .orbit-center img').waitFor();
+assert.match(await page.locator('#juices .orbit-center img').getAttribute('src'),/snackle-juices/);
+await page.locator('#juices').getByRole('button',{name:'Next Fresh sips. Big smiles.'}).click();
+assert.match(await page.locator('#juices .orbit-center img').getAttribute('src'),/juice-sobolo/);
+await page.locator('#juices .orbit-stage').focus();await page.keyboard.press('ArrowLeft');
+assert.match(await page.locator('#juices .orbit-center img').getAttribute('src'),/snackle-juices/);
+await page.setViewportSize({width:390,height:844});await page.goto(origin);await page.waitForLoadState('networkidle');await page.screenshot({path:'qa/home-mobile.png'});await page.getByRole('button',{name:'Open navigation'}).click();await page.getByRole('link',{name:'The menu',exact:true}).first().click();await page.waitForLoadState('networkidle');await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'qa/menu-mobile.png',fullPage:true});
+for(const route of ['#/menu','#/book','#/about','#/contact','#/admin']){await page.goto(origin+'/'+route);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth),false,`overflow: ${route}`);}
+assert.deepEqual(errors,[]);console.log('Browser checks passed: uploads, website publishing, carousel autoplay/swipe/arrows/keyboard, desktop/mobile navigation, filters, order submission, booking submission, owner login/inbox/logout, no overflow or JS errors.');
+}finally{await browser.close();server.close();db.close();}
