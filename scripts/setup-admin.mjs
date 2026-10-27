@@ -13,12 +13,14 @@ await sql`
     email TEXT NOT NULL,
     salt TEXT NOT NULL,
     hash TEXT NOT NULL
-  );
+  )
+`;
+await sql`
   CREATE TABLE IF NOT EXISTS owner_access (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     slug TEXT NOT NULL,
     preferences TEXT NOT NULL
-  );
+  )
 `;
 
 const existing = await sql`SELECT id FROM owner WHERE id = 1`.then(r => r[0]);
