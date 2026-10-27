@@ -1,5 +1,5 @@
-import { getSql, ensureSchema } from '../lib/db';
-import { json, checkOrigin, parseBody } from '../lib/respond';
+import { getSql, ensureSchema } from '../lib/db.js';
+import { json, checkOrigin, parseBody } from '../lib/respond.js';
 import { randomBytes } from 'node:crypto';
 
 export default async function handler(req: any, res: any) {

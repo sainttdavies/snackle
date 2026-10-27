@@ -1,6 +1,6 @@
 import postgres from 'postgres';
 import { randomBytes } from 'node:crypto';
-import catalog from '../server/catalog.json';
+import { defaultCatalog } from './catalog.js';
 
 let _sql: postgres.Sql | null = null;
 let _schema: Promise<void> | null = null;
@@ -85,7 +85,7 @@ async function initializeSchema(): Promise<void> {
     })})
     ON CONFLICT (id) DO NOTHING
   `;
-  for (const product of catalog) {
+  for (const product of defaultCatalog) {
     await sql`
       INSERT INTO products (id, value)
       VALUES (${product.id}, ${JSON.stringify(product)})

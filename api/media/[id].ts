@@ -1,5 +1,5 @@
-import { getSql, ensureSchema } from '../../lib/db';
-import { json } from '../../lib/respond';
+import { getSql, ensureSchema } from '../../lib/db.js';
+import { json } from '../../lib/respond.js';
 
 export default async function handler(req: any, res: any) {
   try {
