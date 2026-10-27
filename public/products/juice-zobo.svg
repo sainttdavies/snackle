@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 1000" width="600" height="1000">
+  <ellipse cx="300" cy="962" rx="146" ry="18" fill="#000" opacity="0.16"/>
+  <rect x="256" y="64" width="88" height="66" rx="16" fill="#633380"/>
+  <rect x="272" y="124" width="56" height="96" fill="#8A4FA8"/>
+  <path d="M300 200 C 250 200 210 240 204 300 L 186 872 C 182 926 216 952 256 952 H 344 C 384 952 418 926 414 872 L 396 300 C 390 240 350 200 300 200 Z" fill="#8A4FA8"/>
+  <path d="M234 350 C 227 460 225 730 231 856" stroke="#ffffff" stroke-opacity="0.4" stroke-width="26" stroke-linecap="round" fill="none"/>
+  <rect x="204" y="458" width="192" height="308" rx="26" fill="#FFF8EE" stroke="rgba(0,0,0,0.08)"/>
+  <text x="300" y="548" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="46" fill="#633380">Snackle</text>
+  <text x="300" y="618" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="27" letter-spacing="2" fill="#8A4FA8">ZOBO</text>
+  <text x="300" y="700" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" letter-spacing="1" fill="#8a8378">crave . sip . flavour</text>
+</svg>
