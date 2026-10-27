@@ -1,5 +1,5 @@
-import { getSql, ensureSchema } from '../lib/db';
-import { json, getCookie } from '../lib/respond';
+import { getSql, ensureSchema } from '../../lib/db';
+import { json, getCookie } from '../../lib/respond';
 import { createHash, randomBytes } from 'node:crypto';
 
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -28,15 +28,23 @@ export default async function handler(req: any, res: any) {
       json(res, 403, { error: 'Request origin is not allowed.' });
       return;
     }
-    // Read multipart body is complex in serverless; accept JSON with base64 data URL instead
-    const body = await req.json ? await req.json() : {};
-    const { type, data } = body; // data = base64 data URL e.g. "data:image/png;base64,...."
-    if (!type || !data) {
-      json(res, 400, { error: 'Provide type and data (base64 data URL).' });
+    const type = String(req.headers['content-type'] || '').split(';')[0].toLowerCase();
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(type)) {
+      json(res, 400, { error: 'Choose a PNG, JPEG or WebP image.' });
+      return;
+    }
+    const data = Buffer.isBuffer(req.body)
+      ? req.body
+      : typeof req.body === 'string'
+        ? Buffer.from(req.body, 'binary')
+        : Buffer.alloc(0);
+    if (!data.length || data.length > 4 * 1024 * 1024) {
+      json(res, 400, { error: 'Choose an image smaller than 4 MB.' });
       return;
     }
     const id = randomBytes(20).toString('hex');
-    await sql`INSERT INTO media VALUES (${id}, ${type}, ${data})`;
+    const dataUrl = `data:${type};base64,${data.toString('base64')}`;
+    await sql`INSERT INTO media VALUES (${id}, ${type}, ${dataUrl})`;
     json(res, 201, { url: '/media/' + id });
   } catch (e: any) {
     json(res, 500, { error: e.message || 'Image upload error' });

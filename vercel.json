@@ -1,8 +1,7 @@
 {
-  "version": 3,
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/media/(.*)", "dest": "/api/media/$1" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/media/:id", "destination": "/api/media/:id" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

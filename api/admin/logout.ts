@@ -1,5 +1,5 @@
-import { getSql, ensureSchema } from '../lib/db';
-import { json, getCookie } from '../lib/respond';
+import { getSql, ensureSchema } from '../../lib/db';
+import { json, getCookie } from '../../lib/respond';
 import { createHash } from 'node:crypto';
 
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');

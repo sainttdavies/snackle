@@ -1,10 +1,10 @@
-import { getSql, ensureSchema } from '../lib/db';
-import { json, getCookie } from '../lib/respond';
+import { getSql, ensureSchema } from '../../lib/db';
+import { json, getCookie, parseBody } from '../../lib/respond';
 import { createHash, randomBytes } from 'node:crypto';
 
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
 
-export default async function handler(req: any, res: any, { params }: any) {
+export default async function handler(req: any, res: any) {
   if (req.method === 'GET') {
     try {
       await ensureSchema();
@@ -40,9 +40,9 @@ export default async function handler(req: any, res: any, { params }: any) {
       json(res, 403, { error: 'Request origin is not allowed.' });
       return;
     }
-    const body = await req.json ? await req.json() : {};
+    const body = await parseBody(req);
     const id = 'product-' + randomBytes(8).toString('hex');
-    const record = { id, ...body, id };
+    const record = { ...body, id };
     await sql`INSERT INTO products VALUES (${id}, ${JSON.stringify(record)})`;
     json(res, 201, { ok: true, id });
   } catch (e: any) {

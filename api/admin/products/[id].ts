@@ -1,11 +1,11 @@
-import { getSql, ensureSchema } from '../lib/db';
-import { json, getCookie } from '../lib/respond';
+import { getSql, ensureSchema } from '../../../lib/db';
+import { json, getCookie, parseBody } from '../../../lib/respond';
 import { createHash } from 'node:crypto';
 
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
 
-export default async function handler(req: any, res: any, { params }: any) {
-  const id = params?.id;
+export default async function handler(req: any, res: any) {
+  const id = String(req.query?.id || '');
   if (req.method === 'PUT') {
     try {
       await ensureSchema();
@@ -31,7 +31,7 @@ export default async function handler(req: any, res: any, { params }: any) {
         json(res, 404, { error: 'Product not found.' });
         return;
       }
-      const body = await req.json ? await req.json() : {};
+      const body = await parseBody(req);
       const next = { ...JSON.parse(old.value), ...body, id };
       await sql`INSERT INTO products VALUES (${id}, ${JSON.stringify(next)}) ON CONFLICT (id) DO UPDATE SET value = ${JSON.stringify(next)}`;
       json(res, 200, { ok: true, id });
@@ -56,7 +56,7 @@ export default async function handler(req: any, res: any, { params }: any) {
         return;
       }
       const result = await sql`DELETE FROM products WHERE id = ${id}`;
-      if (result.rowCount === 0) {
+      if (result.count === 0) {
         json(res, 404, { error: 'Product not found.' });
         return;
       }

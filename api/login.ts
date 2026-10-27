@@ -1,5 +1,5 @@
 import { getSql, ensureSchema } from '../lib/db';
-import { json, getCookie, checkOrigin, rateLimit } from '../lib/respond';
+import { json, checkOrigin, parseBody, rateLimit } from '../lib/respond';
 import { randomBytes, timingSafeEqual, createHash, scryptSync } from 'node:crypto';
 
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -25,7 +25,7 @@ export default async function handler(req: any, res: any) {
       json(res, 429, { error: 'Too many attempts. Please try again in 15 minutes.' });
       return;
     }
-    const body = await (req as any).json ? await (req as any).json() : {};
+    const body = await parseBody(req);
     const { email, password, entryKey } = body;
     const access = await sql`SELECT slug FROM owner_access WHERE id = 1`.then(r => r[0]);
     if (!access || entryKey !== access.slug) {

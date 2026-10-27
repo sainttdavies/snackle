@@ -1,10 +1,10 @@
-import { getSql, ensureSchema } from '../lib/db';
-import { json, getCookie } from '../lib/respond';
+import { getSql, ensureSchema } from '../../../lib/db';
+import { json, getCookie, parseBody } from '../../../lib/respond';
 import { createHash } from 'node:crypto';
 
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
 
-export default async function handler(req: any, res: any, { params }: any) {
+export default async function handler(req: any, res: any) {
   if (req.method !== 'PATCH') {
     json(res, 405, { error: 'Method not allowed' });
     return;
@@ -23,14 +23,14 @@ export default async function handler(req: any, res: any, { params }: any) {
       json(res, 403, { error: 'Please refresh and try again.' });
       return;
     }
-    const id = params?.id;
-    const body = await req.json ? await req.json() : {};
+    const id = String(req.query?.id || '');
+    const body = await parseBody(req);
     if (!['new', 'confirmed', 'completed', 'cancelled'].includes(body.status)) {
       json(res, 400, { error: 'Invalid status.' });
       return;
     }
     const result = await sql`UPDATE requests SET status = ${body.status} WHERE id = ${id}`;
-    if (result.rowCount === 0) {
+    if (result.count === 0) {
       json(res, 404, { error: 'Request not found.' });
       return;
     }

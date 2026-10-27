@@ -1,23 +1,28 @@
 # Snackle
 
-React + Vite storefront with a Node.js/SQLite backend. Keeps Snackle's orange, cocoa, cream and teal branding and full-screen stacking sections. Crumbl informed the clear menu/catering paths; no Crumbl assets are used.
+React + Vite storefront with Vercel Functions and a Neon Postgres backend. Keeps Snackle's orange, cocoa, cream and teal branding and full-screen stacking sections. Crumbl informed the clear menu/catering paths; no Crumbl assets are used.
 
 ## Local preview
 
-Requires Node.js 22.13 or newer.
+Requires Node.js 20 or newer and a Neon Postgres connection string.
 
 ```sh
 npm install
-npm run api
+npx vercel dev
 ```
 
-In a second terminal:
+Alternatively, `npm run dev` previews the frontend only. Add these values to a local `.env` before using the API or running owner setup:
+
+```dotenv
+DATABASE_URL=postgres://...neon.tech/neondb?sslmode=require
+APP_ORIGIN=http://localhost:3000
+```
+
+For a frontend-only preview:
 
 ```sh
 npm run dev
 ```
-
-Open http://127.0.0.1:5173. Vite proxies `/api` and `/media` to the backend.
 
 ## Activate the single owner
 
@@ -33,7 +38,7 @@ For a forgotten password, run `npm run setup:admin -- --reset-password` on the s
 
 - Orders & bookings: review contact details, preferred date, requests and notes; update internal status. Contact customers separately: no automated emails or WhatsApp messages are sent.
 - Menu & pricing: set actual price, bottle/portion size, and availability. Empty prices mean quote requests. Currency defaults to **GHS provisionally** and is configured with the `CURRENCY` environment variable.
-- Website editor: edit copy, colours and full-screen sections. Add up to 12 images per carousel, upload PNG/JPEG/WebP files (6 MB each), reorder/remove images, or use HTTPS image URLs. Uploaded images are stored in SQLite. Publish changes to make the section configuration visible to visitors. Clear backgrounds look best for rotating product cutouts.
+- Website editor: edit copy, colours and full-screen sections. Add up to 12 images per carousel, upload PNG/JPEG/WebP files (4 MB each), reorder/remove images, or use HTTPS image URLs. Uploaded images are stored in Neon. Publish changes to make the section configuration visible to visitors. Clear backgrounds look best for rotating product cutouts.
 - Carousels rotate every five seconds while visible. Hover or keyboard focus pauses motion; manual arrows/swipes pause autoplay until Play is selected. Reduced-motion preferences disable autoplay and transitions. Arrow keys work when the carousel is focused. Single-image carousels disable rotation controls.
 
 ## Customer behaviour
@@ -45,26 +50,22 @@ For a forgotten password, run `npm run setup:admin -- --reset-password` on the s
 
 ## Production deployment
 
-This is a Node service, **not a static-only deployment**. It has not been published to a public host.
+Vercel deploys the Vite frontend and every TypeScript file in `api/` as a function.
 
-1. Set real menu prices/portion sizes and currency; review public contact details and copy.
-2. Replace generated concept imagery and existing product illustrations with actual product photos if required.
-3. Place the service behind HTTPS with a reverse proxy. Set `NODE_ENV=production`, `APP_ORIGIN=https://your-domain`, `PORT=3001`, and `DATABASE_PATH` to durable storage. Production refuses to start without an HTTPS origin.
-4. Run `npm run build`, then `npm start`. The Node service serves the built UI, API and uploaded images. It binds to loopback for a same-machine reverse proxy.
-5. Configure the owner password on that deployment. Do not deploy a test database. Back up the SQLite database, including uploads and customer requests; use restricted filesystem permissions and a consistent SQLite backup procedure.
-6. Add edge-level rate limiting for internet traffic. In-process limits are a basic safeguard and use the direct socket IP; behind a reverse proxy they are shared across visitors and reset on restart.
+1. Create a Neon project and copy its pooled Postgres connection string.
+2. In the Vercel project's Production environment, add `DATABASE_URL` (spelled exactly) and `APP_ORIGIN=https://grab-snackle.vercel.app`.
+3. Push the repository to the production branch or deploy it with Vercel. A successful build must include the functions under `api/`.
+4. Verify `https://grab-snackle.vercel.app/api/catalog` returns JSON.
+5. Put the same `DATABASE_URL` in an uncommitted local `.env`, then run `npm run setup:admin`. Bookmark the private URL printed by the command.
+6. Back up the Neon database and review monitoring, rate limits, data retention, product prices, service details, and public copy before launch.
 
-Session cookies are HttpOnly, SameSite=Strict and Secure in production, with eight-hour expiry. Passwords use salted scrypt hashes; session tokens are stored as hashes. Admin mutations require authentication, an exact permitted Origin and a session CSRF token. Public requests are validated and rate limited. SQL uses bound parameters. PNG/JPEG/WebP uploads are size- and signature-checked; SVG/HTML uploads are rejected. Production sets a CSP, HSTS, frame denial and nosniff headers. This is tested baseline protection, not a guarantee against all threats. Public deployment should include TLS, infrastructure security, backups, monitoring and data-retention choices.
+Session cookies are HttpOnly, SameSite=Strict and Secure in production, with eight-hour expiry. Passwords use salted scrypt hashes; session tokens are stored as hashes. Admin mutations require authentication, an exact permitted Origin and a session CSRF token. SQL uses bound parameters. This is a tested baseline, not a security guarantee; production still needs infrastructure security, backups, monitoring and data-retention choices.
 
 ## Verification
 
 ```sh
 npm run build
-npm test
-npm run test:browser
 ```
-
-Browser tests use Playwright with installed Google Chrome on macOS; set `CHROME_PATH` for another executable or install Playwright Chromium and omit the executable override. Both backend and browser tests use an isolated in-memory database and synthetic data. Screenshots go to `qa/`.
 
 The original frontend sources are retained in `src-before-refresh/` for comparison.
 

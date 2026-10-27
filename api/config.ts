@@ -1,7 +1,7 @@
 import { getSql, ensureSchema } from '../lib/db';
 import { json } from '../lib/respond';
 
-export default async function handler(req: any, res: any) {
+export default async function handler(_req: any, res: any) {
   try {
     await ensureSchema();
     const sql = getSql();

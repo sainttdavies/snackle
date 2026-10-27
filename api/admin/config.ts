@@ -1,5 +1,5 @@
-import { getSql, ensureSchema } from '../lib/db';
-import { json, getCookie } from '../lib/respond';
+import { getSql, ensureSchema } from '../../lib/db';
+import { json, getCookie, parseBody } from '../../lib/respond';
 import { createHash } from 'node:crypto';
 
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -28,7 +28,7 @@ export default async function handler(req: any, res: any) {
       json(res, 403, { error: 'Request origin is not allowed.' });
       return;
     }
-    const body = await req.json ? await req.json() : {};
+    const body = await parseBody(req);
     await sql`INSERT INTO settings VALUES (1, ${JSON.stringify(body)}) ON CONFLICT (id) DO UPDATE SET value = ${JSON.stringify(body)}`;
     json(res, 200, { ok: true });
   } catch (e: any) {
