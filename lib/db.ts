@@ -36,9 +36,10 @@ async function initializeSchema(): Promise<void> {
     CREATE TABLE IF NOT EXISTS sessions (
       token TEXT PRIMARY KEY,
       csrf TEXT NOT NULL,
-      expires INTEGER NOT NULL
+      expires BIGINT NOT NULL
     )
   `;
+  await sql`ALTER TABLE sessions ALTER COLUMN expires TYPE BIGINT`;
   await sql`
     CREATE TABLE IF NOT EXISTS settings (
       id INTEGER PRIMARY KEY CHECK (id = 1),
