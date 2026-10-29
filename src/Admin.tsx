@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import ImageEditor from './ImageEditor';
+import CustomizationEditor from './CustomizationEditor';
 import {
   MAX_SECTIONS,
   THEMES,
@@ -567,6 +568,7 @@ export default function Admin({ config, update, reset }: Props) {
         </Field>
       </section>
 
+      <CustomizationEditor config={config} update={update}/>
 
     </div>
   );

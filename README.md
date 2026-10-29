@@ -37,8 +37,8 @@ For a forgotten password, run `npm run setup:admin -- --reset-password` on the s
 ## Owner tools
 
 - Orders & bookings: review contact details, preferred date, requests and notes; update internal status. Contact customers separately: no automated emails or WhatsApp messages are sent.
-- Menu & pricing: set actual price, bottle/portion size, and availability. Empty prices mean quote requests. Currency defaults to **GHS provisionally** and is configured with the `CURRENCY` environment variable.
-- Website editor: edit copy, colours and full-screen sections. Add up to 12 images per carousel, upload PNG/JPEG/WebP files (4 MB each), reorder/remove images, or use HTTPS image URLs. Uploaded images are stored in Neon. Publish changes to make the section configuration visible to visitors. Clear backgrounds look best for rotating product cutouts.
+- Menu & pricing: add, edit and remove products, including names, descriptions, categories, images, colours, prices, portion sizes and availability. Empty prices mean quote requests. Currency defaults to **GHS** and is editable in the website editor.
+- Website editor: edit brand identity, navigation, service options, page copy, images, footer, loading states, 404 page and full-screen sections. Add up to 12 images per carousel, upload PNG/JPEG/WebP files (4 MB each), reorder/remove images, or use HTTPS image URLs. Uploaded images are stored in Neon. Publish changes to make the configuration visible to visitors. Clear backgrounds look best for rotating product cutouts.
 - Carousels rotate every five seconds while visible. Hover or keyboard focus pauses motion; manual arrows/swipes pause autoplay until Play is selected. Reduced-motion preferences disable autoplay and transitions. Arrow keys work when the carousel is focused. Single-image carousels disable rotation controls.
 
 ## Customer behaviour
@@ -65,6 +65,8 @@ Session cookies are HttpOnly, SameSite=Strict and Secure in production, with eig
 
 ```sh
 npm run build
+node --test tests/server.test.mjs
+node tests/browser.mjs
 ```
 
 The original frontend sources are retained in `src-before-refresh/` for comparison.

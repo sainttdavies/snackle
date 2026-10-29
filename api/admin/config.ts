@@ -1,6 +1,7 @@
 import { getSql, ensureSchema } from '../../lib/db.js';
 import { json, getCookie, parseBody } from '../../lib/respond.js';
 import { createHash } from 'node:crypto';
+import {validSiteConfig} from '../../lib/validation.mjs';
 
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
 
@@ -29,6 +30,10 @@ export default async function handler(req: any, res: any) {
       return;
     }
     const body = await parseBody(req);
+    if (!validSiteConfig(body)) {
+      json(res, 400, { error: 'Check the content, image URLs and six-digit colours.' });
+      return;
+    }
     await sql`INSERT INTO settings VALUES (1, ${JSON.stringify(body)}) ON CONFLICT (id) DO UPDATE SET value = ${JSON.stringify(body)}`;
     json(res, 200, { ok: true });
   } catch (e: any) {

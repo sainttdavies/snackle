@@ -161,7 +161,7 @@ export function defaultConfig(): SiteConfig {
       },
     ],
     footer: {
-      tagline: 'crave · sip · flavour — fresh juice and hot small chops, made to order.',
+      tagline: 'crave · sip · savour — fresh juice and hot small chops, made to order.',
       email: 'cindyafidoku0@gmail.com',
       phone: '',
       location: 'Accra, Ghana',

@@ -7,7 +7,9 @@ export default async function handler(_req: any, res: any) {
     const sql = getSql();
     const rows = await sql`SELECT value FROM products ORDER BY id`;
     const products = rows.map((row) => JSON.parse(row.value));
-    json(res, 200, { products, currency: 'GHS' });
+    const settings = await sql`SELECT value FROM settings WHERE id = 1`.then(r => r[0]);
+    const currency = settings ? JSON.parse(settings.value)?.service?.currency : undefined;
+    json(res, 200, { products, currency: ['GHS','USD','GBP','EUR'].includes(currency) ? currency : 'GHS' });
   } catch (e: any) {
     json(res, 500, { error: e.message || 'Catalog error' });
   }

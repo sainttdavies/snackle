@@ -1,6 +1,7 @@
 import { getSql, ensureSchema } from '../lib/db.js';
 import { json, checkOrigin, parseBody } from '../lib/respond.js';
 import { randomBytes } from 'node:crypto';
+import {hydrateCustomization} from '../shared/customization.mjs';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -15,6 +16,8 @@ export default async function handler(req: any, res: any) {
   try {
     await ensureSchema();
     const sql = getSql();
+    const settings = await sql`SELECT value FROM settings WHERE id = 1`.then(r => r[0]);
+    const service = hydrateCustomization(settings ? JSON.parse(settings.value) : {}).service;
     const body = await parseBody(req);
     const { kind, name, email, phone, date, notes = '', fulfilment, address = '', guests, eventType, country = 'Ghana', area, items } = body;
     if (typeof name !== 'string' || name.trim().length < 2 || name.length > 120 ||
@@ -29,14 +32,24 @@ export default async function handler(req: any, res: any) {
       json(res, 400, { error: 'Invalid request type.' });
       return;
     }
+    const today = new Date().toLocaleDateString('en-CA',{timeZone:'Africa/Accra'});
+    const allowedAreas = service.areas.split('\n').map((a:string)=>a.trim()).filter(Boolean);
+    if(date<today || Number.isNaN(Date.parse(date)) || country!==service.country || ((kind==='booking'||fulfilment==='delivery')&&!allowedAreas.includes(area))){
+      json(res,400,{error:'Choose a future date and an available service area.'});
+      return;
+    }
     let resolvedItems: any[] | undefined;
     let total: number | null | undefined;
     if (kind === 'booking') {
+      if(!service.bookingEnabled){json(res,400,{error:'Event enquiries are currently paused.'});return;}
       if (!Number.isInteger(guests) || guests < 1 || guests > 10000 || typeof eventType !== 'string' || eventType.length < 2 || typeof address !== 'string' || address.length < 3) {
         json(res, 400, { error: 'Check the guest count, occasion and event location.' });
         return;
       }
     } else {
+      if((fulfilment==='pickup'&&!service.pickupEnabled)||(fulfilment==='delivery'&&!service.deliveryEnabled)){
+        json(res,400,{error:'That fulfilment option is currently unavailable.'});return;
+      }
       if (!['pickup', 'delivery'].includes(fulfilment) || (fulfilment === 'delivery' && (!address || address.length < 5)) || !Array.isArray(items) || items.length < 1 || items.length > 20) {
         json(res, 400, { error: 'Check your basket and delivery details.' });
         return;
@@ -83,7 +96,7 @@ export default async function handler(req: any, res: any) {
       eventType,
       items: resolvedItems,
       total,
-      currency: 'GHS',
+      currency: service.currency,
     };
     await sql`INSERT INTO requests (id, kind, status, created, value) VALUES (${id}, ${kind}, 'new', ${new Date().toISOString()}, ${JSON.stringify(record)})`;
     json(res, 201, { id, status: 'new' });

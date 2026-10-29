@@ -25,8 +25,11 @@ await page.goto(origin+'/#/book');await page.getByLabel('Your name').fill('Event
 await page.goto(origin+'/#/admin');await page.getByLabel('Email',{exact:true}).fill('cindyafidoku0@gmail.com');await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Sign in securely'}).click();await page.getByText('The kitchen desk.').waitFor();await page.getByRole('heading',{name:'Browser Test',exact:true}).waitFor();await page.getByRole('heading',{name:'Event Test',exact:true}).waitFor();await page.getByRole('button',{name:'Website editor',exact:true}).click();
 await page.locator('input[type=file]').first().setInputFiles('public/images/snackle-juices.png');
 await page.getByText('5 of 12 images.',{exact:false}).waitFor();
+await page.locator('.custom-group').first().getByLabel('Title',{exact:true}).fill('Snackle — Crave. Sip. Savour.');
 await page.getByRole('button',{name:'Publish changes'}).click();await page.getByText('Website changes saved for all visitors.').waitFor();
-const config=await (await page.request.get(origin+'/api/config')).json();assert.equal(config.config.sections[0].images.length,5);assert.match(config.config.sections[0].images[4].src,/^\/media\//);
+const config=await (await page.request.get(origin+'/api/config')).json();assert.equal(config.config.sections[0].images.length,5);assert.match(config.config.sections[0].images[4].src,/^\/media\//);assert.equal(config.config.brand.title,'Snackle — Crave. Sip. Savour.');
+await page.getByRole('button',{name:'Menu & pricing'}).click();await page.getByRole('button',{name:'Add product'}).click();await page.getByLabel('Product name').first().fill('Test treat');await page.getByRole('button',{name:'Save product'}).first().click();await page.getByRole('heading',{name:'Test treat'}).waitFor();
+await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'owner dashboard overflow');await page.setViewportSize({width:1440,height:1000});
 await page.getByRole('button',{name:'Sign out'}).click();await page.waitForURL(origin+'/#/');
 await page.locator('#juices .orbit-center img').waitFor();
 assert.match(await page.locator('#juices .orbit-center img').getAttribute('src'),/snackle-juices/);
@@ -36,5 +39,6 @@ await page.locator('#juices .orbit-stage').focus();await page.keyboard.press('Ar
 assert.match(await page.locator('#juices .orbit-center img').getAttribute('src'),/snackle-juices/);
 await page.setViewportSize({width:390,height:844});await page.goto(origin);await page.waitForLoadState('networkidle');await page.screenshot({path:'qa/home-mobile.png'});await page.getByRole('button',{name:'Open navigation'}).click();await page.getByRole('link',{name:'The menu',exact:true}).first().click();await page.waitForLoadState('networkidle');await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'qa/menu-mobile.png',fullPage:true});
 for(const route of ['#/menu','#/book','#/about','#/contact','#/admin']){await page.goto(origin+'/'+route);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth),false,`overflow: ${route}`);}
+await page.setViewportSize({width:320,height:700});for(const route of ['#/','#/menu','#/book','#/contact']){await page.goto(origin+'/'+route);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth),false,`320px overflow: ${route}`);}
 assert.deepEqual(errors,[]);console.log('Browser checks passed: uploads, website publishing, carousel autoplay/swipe/arrows/keyboard, desktop/mobile navigation, filters, order submission, booking submission, owner login/inbox/logout, no overflow or JS errors.');
 }finally{await browser.close();server.close();db.close();}

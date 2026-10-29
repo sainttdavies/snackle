@@ -1,6 +1,7 @@
 import { getSql, ensureSchema } from '../../../lib/db.js';
 import { json, getCookie, parseBody } from '../../../lib/respond.js';
 import { createHash } from 'node:crypto';
+import {validProduct} from '../../../lib/validation.mjs';
 
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
 
@@ -33,6 +34,10 @@ export default async function handler(req: any, res: any) {
       }
       const body = await parseBody(req);
       const next = { ...JSON.parse(old.value), ...body, id };
+      if (!validProduct(next)) {
+        json(res, 400, { error: 'Check product details, image URL, colour and price.' });
+        return;
+      }
       await sql`INSERT INTO products VALUES (${id}, ${JSON.stringify(next)}) ON CONFLICT (id) DO UPDATE SET value = ${JSON.stringify(next)}`;
       json(res, 200, { ok: true, id });
     } catch (e: any) {
