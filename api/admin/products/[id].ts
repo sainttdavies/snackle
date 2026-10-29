@@ -1,12 +1,28 @@
 import { getSql, ensureSchema } from '../../../lib/db.js';
 import { json, getCookie, parseBody } from '../../../lib/respond.js';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import {validProduct} from '../../../lib/validation.mjs';
 
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
 
 export default async function handler(req: any, res: any) {
   const id = String(req.query?.id || '');
+  if (req.method === 'POST' && id === 'new') {
+    try {
+      await ensureSchema();
+      const sql = getSql();
+      const cookie = getCookie(req, 'snackle_session') || '';
+      const session = await sql`SELECT * FROM sessions WHERE token = ${digest(cookie)} AND expires > ${Date.now()}`.then(r => r[0]);
+      if (!session) { json(res, 401, { error: 'Please sign in as the owner.' }); return; }
+      if (req.headers['x-csrf-token'] !== session.csrf || req.headers.origin !== (process.env.APP_ORIGIN || '')) { json(res, 403, { error: 'Please refresh and try again.' }); return; }
+      const body = await parseBody(req);
+      if (!validProduct(body)) { json(res, 400, { error: 'Check product details, image URL, colour and price.' }); return; }
+      const productId = 'product-' + randomBytes(8).toString('hex');
+      await sql`INSERT INTO products (id,value) VALUES (${productId},${JSON.stringify({...body,id:productId})})`;
+      json(res, 201, { ok: true, id: productId });
+    } catch (e: any) { json(res, 500, { error: e.message || 'Product creation error' }); }
+    return;
+  }
   if (req.method === 'PUT') {
     try {
       await ensureSchema();
