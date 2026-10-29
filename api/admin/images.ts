@@ -42,6 +42,10 @@ export default async function handler(req: any, res: any) {
       json(res, 400, { error: 'Choose an image smaller than 4 MB.' });
       return;
     }
+    const actual = data.length>24 && data.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])) ? 'image/png'
+      : data.length>12 && data[0]===255 && data[1]===216 && data[2]===255 ? 'image/jpeg'
+      : data.length>16 && data.toString('ascii',0,4)==='RIFF' && data.toString('ascii',8,12)==='WEBP' ? 'image/webp' : '';
+    if(actual!==type){json(res,400,{error:'Image file does not match its format.'});return;}
     const id = randomBytes(20).toString('hex');
     const dataUrl = `data:${type};base64,${data.toString('base64')}`;
     await sql`INSERT INTO media VALUES (${id}, ${type}, ${dataUrl})`;

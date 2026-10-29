@@ -156,65 +156,15 @@ export default function Admin({ config, update, reset }: Props) {
         padding: '28px clamp(16px, 4vw, 48px) 80px',
       }}
     >
-      <header
-        className="flex items-center"
-        style={{ flexWrap: 'wrap', gap: 14, marginBottom: 30 }}
-      >
-        <img src={theme.logo} alt="Snackle" style={{ height: 38, width: 'auto' }} />
-        <div style={{ marginLeft: 4 }}>
-          <div
-            style={{
-              fontSize: 17,
-              fontWeight: 700,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-            }}
-          >
-            Site Admin
-          </div>
-          <div style={{ fontSize: 12, color: '#6b6f72' }}>
-            Edit colours, images, copy and sections, then publish your changes above.
-          </div>
+      <div className="admin-reset-row">
+        <p>Changes to sections, pages and branding stay in your draft until you publish.</p>
+        <div className="admin-reset-actions">
+          {confirmingReset ? <>
+            <button type="button" style={{...btnStyle(accent),background:'#C9522B',borderColor:'#C9522B',color:'#fff'}} onClick={()=>{reset();setConfirmingReset(false);}}>Confirm reset</button>
+            <button type="button" style={btnStyle(accent)} onClick={()=>setConfirmingReset(false)}>Cancel</button>
+          </> : <button type="button" style={btnStyle(accent)} onClick={()=>setConfirmingReset(true)}>Reset website draft</button>}
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            style={btnStyle(accent)}
-            onClick={() => (window.location.hash = '#/')}
-          >
-            View site
-          </button>
-          {confirmingReset ? (
-            <>
-              <button
-                type="button"
-                style={{ ...btnStyle(accent), background: '#C9522B', borderColor: '#C9522B', color: '#fff' }}
-                onClick={() => {
-                  reset();
-                  setConfirmingReset(false);
-                }}
-              >
-                Confirm reset
-              </button>
-              <button
-                type="button"
-                style={btnStyle(accent)}
-                onClick={() => setConfirmingReset(false)}
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              style={btnStyle(accent)}
-              onClick={() => setConfirmingReset(true)}
-            >
-              Reset defaults
-            </button>
-          )}
-        </div>
-      </header>
+      </div>
 
       {/* Palette */}
       <section style={card}>
@@ -396,6 +346,24 @@ export default function Admin({ config, update, reset }: Props) {
             </Field>
             <Field label="Section background" hint="Base hex colour — drives the rotating shades below">
               {colorInput(section.bg, (v) => patchSection(sectionIndex, { bg: v }))}
+            </Field>
+            <Field label="Collection label" hint="Top-left label; leave blank to use the carousel default">
+              <input value={section.collection ?? ''} onChange={e => patchSection(sectionIndex,{collection:e.target.value})} style={inputStyle}/>
+            </Field>
+            <Field label="Eyebrow" hint="Small label above the section heading">
+              <input value={section.eyebrow ?? ''} onChange={e => patchSection(sectionIndex,{eyebrow:e.target.value})} style={inputStyle}/>
+            </Field>
+            <Field label="Side note" hint="Vertical message on wider screens">
+              <input value={section.note ?? ''} onChange={e => patchSection(sectionIndex,{note:e.target.value})} style={inputStyle}/>
+            </Field>
+            <Field label="Menu category" hint="The button filters this category; leave blank for all products">
+              <input value={section.category ?? ''} onChange={e => patchSection(sectionIndex,{category:e.target.value})} style={inputStyle}/>
+            </Field>
+            <Field label="Badge text" hint="One line per row; leave blank for the carousel default">
+              <textarea value={section.badge ?? ''} onChange={e => patchSection(sectionIndex,{badge:e.target.value})} rows={3} style={inputStyle}/>
+            </Field>
+            <Field label="Show badge on this section">
+              <input type="checkbox" checked={section.badgeVisible !== false} onChange={e => patchSection(sectionIndex,{badgeVisible:e.target.checked})}/>
             </Field>
           </div>
 

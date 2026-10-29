@@ -29,8 +29,7 @@ if (existing && !process.argv.includes('--reset-password')) {
   process.exit(0);
 }
 
-const access = await sql`SELECT slug, preferences FROM owner_access WHERE id = 1`.then(r => r[0]);
-const email = access?.preferences ? JSON.parse(access.preferences).email || 'cindyafidoku0@gmail.com' : 'cindyafidoku0@gmail.com';
+const email = (await sql`SELECT email FROM owner WHERE id = 1`.then(r => r[0]))?.email || 'cindyafidoku0@gmail.com';
 
 function secret(prompt) {
   return new Promise((resolve) => {

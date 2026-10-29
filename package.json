@@ -6,8 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run typecheck && npm run build && node --test tests/*.test.mjs && node tests/browser.mjs",
     "preview": "vite preview",
-    "setup:admin": "node --env-file-if-exists=.env scripts/setup-admin.mjs"
+    "setup:admin": "node --env-file-if-exists=.env scripts/setup-admin.mjs",
+    "admin:link": "node --env-file-if-exists=.env scripts/show-admin-link.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.469.0",

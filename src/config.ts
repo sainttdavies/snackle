@@ -21,6 +21,13 @@ export type SectionConfig = {
   cta: string;
   /** Section base background colour */
   bg: string;
+  /** Optional section-specific presentation and menu destination. */
+  collection?: string;
+  eyebrow?: string;
+  note?: string;
+  badge?: string;
+  badgeVisible?: boolean;
+  category?: string;
   images: ProductImage[];
 };
 
@@ -45,8 +52,6 @@ export type SiteConfig = Customization & {
   sections: SectionConfig[];
   footer: FooterConfig;
   about: AboutConfig;
-  /** Single-owner entry slug, exposed publicly for the /admin entry point. */
-  entryKey?: string;
 };
 
 export type Theme = {
@@ -129,6 +134,12 @@ export function newSection(index: number, themeId: ThemeId = DEFAULT_THEME): Sec
       'Describe this drop — what is cooking, what is pouring, and why it deserves a full screen.',
     cta: 'SEE MORE',
     bg: theme.sectionBgs[index % 2],
+    collection: 'THE NEW COLLECTION',
+    eyebrow: 'FRESHLY MADE',
+    note: 'MADE FOR YOUR GOOD MOMENTS',
+    badge: 'NEW\nfrom\nSNACKLE',
+    badgeVisible: true,
+    category: '',
     images: placeholderImages(),
   };
 }

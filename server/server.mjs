@@ -1,5 +1,6 @@
 import http from 'node:http';
-import {hydrateCustomization,validCustomization,safeAsset} from '../shared/customization.mjs';
+import {hydrateCustomization,safeAsset} from '../shared/customization.mjs';
+import {validSiteConfig} from '../lib/validation.mjs';
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, scryptSync, timingSafeEqual, createHash } from 'node:crypto';
 import { readFileSync, mkdirSync, statSync } from 'node:fs';
@@ -22,12 +23,12 @@ export function createApp({ database = process.env.DATABASE_PATH || resolve(root
   for (const p of JSON.parse(readFileSync(resolve(root, 'server/catalog.json')))) insert.run(p.id, JSON.stringify(p));
   const buckets = new Map();
   const digest = token => createHash('sha256').update(token).digest('hex');
-  const products = () => db.prepare('SELECT value FROM products').all().map(p => JSON.parse(p.value));
+  const products = () => db.prepare('SELECT value FROM products').all().map(p => JSON.parse(p.value)).sort((a,b)=>(a.sortOrder??9999)-(b.sortOrder??9999)||a.id.localeCompare(b.id));
   const text = (v, min=1, max=500) => typeof v === 'string' && v.trim().length >= min && v.length <= max;
   const validEmail = v => text(v, 3, 254) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-  const validDate = v => text(v,10,10) && /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0,10) === v && v >= new Date().toISOString().slice(0,10);
+  const validDate = (v,zone) => text(v,10,10) && /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0,10) === v && v >= new Date().toLocaleDateString('en-CA',{timeZone:zone});
   const safeUrl = safeAsset;
-  const configValid = c => c && validCustomization(c) && ['orange','cream','brown','teal'].includes(c.theme) && Array.isArray(c.sections) && c.sections.length >= 1 && c.sections.length <= 8 && c.sections.every(s => text(s.id,1,100) && text(s.ghost,1,80) && text(s.title,1,100) && text(s.description,0,2000) && text(s.cta,1,80) && /^#[\da-f]{6}$/i.test(s.bg) && Array.isArray(s.images) && s.images.length >= 1 && s.images.length <= 12 && s.images.every(i => safeUrl(i.src) && text(i.alt,1,150) && (i.bg === '' || /^#[\da-f]{6}$/i.test(i.bg)))) && c.footer && ['tagline','email','phone','location','instagram','tiktok','copyright'].every(k => text(c.footer[k],0,1000)) && (!c.footer.instagram || /^https:\/\//.test(c.footer.instagram)) && (!c.footer.tiktok || /^https:\/\//.test(c.footer.tiktok)) && c.about && text(c.about.title,1,150) && text(c.about.body,1,5000);
+  const configValid = validSiteConfig;
   const server = http.createServer(async (req,res) => {
     res.setHeader('X-Content-Type-Options','nosniff'); res.setHeader('X-Frame-Options','DENY'); res.setHeader('Referrer-Policy','strict-origin-when-cross-origin'); res.setHeader('Cache-Control','no-store');
     if (production) { res.setHeader('Strict-Transport-Security','max-age=31536000; includeSubDomains'); res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"); }
@@ -68,7 +69,7 @@ export function createApp({ database = process.env.DATABASE_PATH || resolve(root
         if (!body || typeof body !== 'object' || Array.isArray(body)) return send(400,{error:'Invalid request.'});
       }
       if (path==='/api/catalog' && method==='GET') return send(200,{products:products(),currency:service().currency});
-      if (path==='/api/config' && method==='GET') return send(200,{config:{...publicConfig(),...hydrateCustomization(publicConfig()),entryKey:privateAccess().slug}});
+      if (path==='/api/config' && method==='GET') {const saved=publicConfig();return send(200,{config:{theme:saved.theme||'orange',sections:saved.sections,footer:saved.footer,about:saved.about,...hydrateCustomization(saved)}});}
       if (path==='/api/session' && method==='GET') return send(200,{authenticated:!!session,csrf:session?.csrf,configured:!!db.prepare('SELECT id FROM owner WHERE id=1').get()});
       if(path.startsWith('/api/entry/') && method==='GET') {
         if(path.slice(11)!==privateAccess().slug)return send(404,{error:'Not found.'});
@@ -108,16 +109,17 @@ export function createApp({ database = process.env.DATABASE_PATH || resolve(root
       if (path==='/api/admin/logout' && method==='POST') { db.prepare('DELETE FROM sessions WHERE token=?').run(digest(cookie));res.setHeader('Set-Cookie',`snackle_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${production?'; Secure':''}`);return send(200,{ok:true}); }
       if (path==='/api/admin/config' && method==='PUT') {
         if(!configValid(body))return send(400,{error:'Check the content, image URLs and six-digit colours.'});
-        db.prepare('INSERT INTO settings VALUES (1,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value').run(JSON.stringify(body));return send(200,{ok:true});
+        const publicSettings={theme:body.theme,sections:body.sections,footer:body.footer,about:body.about,...hydrateCustomization(body)};db.prepare('INSERT INTO settings VALUES (1,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value').run(JSON.stringify(publicSettings));return send(200,{ok:true});
       }
       if (path==='/api/requests' && method==='POST') {
         const {kind,name,email,phone,date,notes='',fulfilment,address='',guests,eventType} = body;
-        if (!['order','booking'].includes(kind) || !text(name,2,120) || !validEmail(email) || !text(phone,7,40) || !/^[+\d\s()\-]+$/.test(phone) || !validDate(date) || !text(notes,0,2000)) return send(400,{error:'Check your contact details and choose today or a future date.'});
-        const settings=service();const areas=settings.areas.split('\n').map(v=>v.trim()).filter(Boolean);
+        const settings=service();
+        if (!['order','booking'].includes(kind) || !text(name,2,120) || !validEmail(email) || !text(phone,7,40) || !/^[+\d\s()\-]+$/.test(phone) || !validDate(date,settings.timezone) || !text(notes,0,2000)) return send(400,{error:'Check your contact details and choose today or a future date.'});
+        const areas=settings.areas.split('\n').map(v=>v.trim()).filter(Boolean);
         if(kind==='booking'&&!settings.bookingEnabled)return send(400,{error:'Event enquiries are currently paused.'});
         if(kind==='order'&&((fulfilment==='delivery'&&!settings.deliveryEnabled)||(fulfilment==='pickup'&&!settings.pickupEnabled)))return send(400,{error:'That fulfilment option is currently unavailable.'});
-        if((kind==='booking'||fulfilment==='delivery') && (body.country!=='Ghana'||!areas.includes(body.area)))return send(400,{error:'Choose an available service area in Ghana.'});
-        let record={name:name.trim(),email:email.trim(),phone,date,notes,country:'Ghana',area:body.area||settings.city};
+        if((kind==='booking'||fulfilment==='delivery') && (body.country!==settings.country||!areas.includes(body.area)))return send(400,{error:`Choose an available service area in ${settings.country}.`});
+        let record={name:name.trim(),email:email.trim(),phone,date,notes,country:settings.country,area:body.area||settings.city};
         if(kind==='order') {
           if(!['pickup','delivery'].includes(fulfilment) || (fulfilment==='delivery' && !text(address,5,500)) || !Array.isArray(body.items) || body.items.length<1 || body.items.length>20) return send(400,{error:'Check your basket and delivery details.'});
           const catalog=products(); const ids=new Set(); const items=[];
@@ -139,8 +141,8 @@ export function createApp({ database = process.env.DATABASE_PATH || resolve(root
         const id=method==='POST'?'product-'+randomBytes(8).toString('hex'):path.split('/').pop();const old=products().find(p=>p.id===id);
         if(method==='PUT'&&!old)return send(404,{error:'Product not found.'});
         const next={...old,...body,id};
-        if(!(next.price===null || (typeof next.price==='number' && Number.isFinite(next.price) && next.price>0 && next.price<=100000)) || typeof next.available!=='boolean'||!text(next.unit,1,80)||!text(next.name,1,120)||!text(next.category,1,60)||!text(next.description,0,1000)||!safeAsset(next.image)||!/^#[\da-f]{6}$/i.test(next.color))return send(400,{error:'Check product details, image URL, colour and price.'});
-        const record={id,name:next.name,category:next.category,description:next.description,image:next.image,color:next.color,unit:next.unit,price:next.price===null?null:Math.round(next.price*100)/100,available:next.available};
+        if(!(next.price===null || (typeof next.price==='number' && Number.isFinite(next.price) && next.price>0 && next.price<=100000)) || typeof next.available!=='boolean'||!text(next.unit,1,80)||!text(next.name,1,120)||!text(next.category,1,60)||!text(next.description,0,1000)||!safeAsset(next.image)||!/^#[\da-f]{6}$/i.test(next.color)|| (next.sortOrder!==undefined && (!Number.isInteger(next.sortOrder)||next.sortOrder<0||next.sortOrder>9999)))return send(400,{error:'Check product details, image URL, colour and price.'});
+        const record={id,name:next.name,category:next.category,description:next.description,image:next.image,color:next.color,sortOrder:next.sortOrder??9999,unit:next.unit,price:next.price===null?null:Math.round(next.price*100)/100,available:next.available};
         db.prepare('INSERT INTO products VALUES (?,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value').run(id,JSON.stringify(record));return send(method==='POST'?201:200,{ok:true,id});
       }
       if(path.startsWith('/api/admin/products/') && method==='DELETE') {

@@ -1,5 +1,7 @@
 import defaults from './customization.json' with {type:'json'};
 export const safeAsset = v => typeof v==='string' && v.length<=2000 && !/[\\\u0000-\u0020]/.test(v) && (/^\/(?!\/)/.test(v) || /^https:\/\//.test(v));
+const validTimeZone = zone => {try{new Intl.DateTimeFormat('en-US',{timeZone:zone});return true;}catch{return false;}};
+const requiredTokens={openBag:['count'],brandHome:['name'],carouselImages:['title'],carouselPrevious:['title'],carouselNext:['title'],slidePosition:['index','count','alt'],addToBag:['name'],addedToBag:['name'],removeOne:['name'],addOne:['name'],removeItem:['name'],orderReceivedBody:['reference'],bookingReceivedBody:['reference']};
 export function hydrateCustomization(config={}) {
   return Object.fromEntries(Object.entries(defaults).map(([group,values])=>[group,{...values,...(config[group]||{})}]));
 }
@@ -10,10 +12,10 @@ export function validCustomization(config) {
     for(const [key,value] of Object.entries(config[group])) {
       if(!(key in values) || typeof value !== typeof values[key])return false;
       if(typeof value==='string' && value.length>5000)return false;
-      if(['background','ink','accent','highlight'].includes(key) && !/^#[\da-f]{6}$/i.test(value))return false;
-      if((['logo','footerLogo','favicon','thumbnail','image'].includes(key)||key.endsWith('Image')) && value!=='' && !safeAsset(value))return false;
+      if(['background','ink','accent','highlight','skeletonLineColor'].includes(key) && !/^#[\da-f]{6}$/i.test(value))return false;
+      if((['logo','footerLogo','favicon','thumbnail','productThumbnail','image'].includes(key)||key.endsWith('Image')) && value!=='' && !safeAsset(value))return false;
     }
   }
   const c=hydrateCustomization(config);
-  return ['DM Sans','Quantico','Georgia'].includes(c.brand.bodyFont) && ['Barlow Condensed','Quantico','Georgia'].includes(c.brand.headingFont) && ['GHS','USD','GBP','EUR'].includes(c.service.currency) && c.service.country==='Ghana' && c.service.city.trim().length>0 && c.service.areas.trim().length>0 && c.service.areas.split('\n').filter(Boolean).length<=50 && c.carousel.seconds>=3 && c.carousel.seconds<=30 && Number.isInteger(c.carousel.seconds) && c.brand.name.trim().length>0 && safeAsset(c.brand.logo) && safeAsset(c.brand.favicon);
+  return ['DM Sans','Quantico','Georgia'].includes(c.brand.bodyFont) && ['Barlow Condensed','Quantico','Georgia'].includes(c.brand.headingFont) && ['GHS','USD','GBP','EUR'].includes(c.service.currency) && c.service.country.trim().length>0 && c.service.country.length<=100 && c.service.city.trim().length>0 && c.service.areas.trim().length>0 && c.service.areas.split('\n').filter(Boolean).length<=50 && validTimeZone(c.service.timezone) && c.carousel.seconds>=3 && c.carousel.seconds<=30 && Number.isInteger(c.carousel.seconds) && Number.isInteger(c.loading.skeletonCount) && c.loading.skeletonCount>=1 && c.loading.skeletonCount<=12 && Number.isInteger(c.loading.skeletonRadius) && c.loading.skeletonRadius>=0 && c.loading.skeletonRadius<=40 && Object.entries(requiredTokens).every(([key,tokens])=>tokens.every(token=>c.ui[key].includes(`{${token}}`))) && c.brand.name.trim().length>0 && safeAsset(c.brand.logo) && safeAsset(c.brand.favicon);
 }

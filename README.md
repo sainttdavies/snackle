@@ -30,15 +30,16 @@ npm run dev
 npm run setup:admin
 ```
 
-The interactive prompt sets a hidden password for **cindyafidoku0@gmail.com**. Use at least 14 characters. No password is seeded, printed, checked into source or sent in chat. Sign in at `/#/admin`. There is no public signup or first-visitor account claiming. The database constrains the owner table to one account.
+The interactive prompt sets a hidden password for **cindyafidoku0@gmail.com**. Use at least 14 characters. No password is seeded, printed, checked into source or sent in chat. Sign in using the private `/#/manage/...` link printed during setup. If you lose it, run `npm run admin:link` with the same `DATABASE_URL`. The public config endpoint does not expose this link. There is no public signup or first-visitor account claiming. The database constrains the owner table to one account.
 
 For a forgotten password, run `npm run setup:admin -- --reset-password` on the server. This revokes existing sessions.
 
 ## Owner tools
 
 - Orders & bookings: review contact details, preferred date, requests and notes; update internal status. Contact customers separately: no automated emails or WhatsApp messages are sent.
-- Menu & pricing: add, edit and remove products, including names, descriptions, categories, images, colours, prices, portion sizes and availability. Empty prices mean quote requests. Currency defaults to **GHS** and is editable in the website editor.
-- Website editor: edit brand identity, navigation, service options, page copy, images, footer, loading states, 404 page and full-screen sections. Add up to 12 images per carousel, upload PNG/JPEG/WebP files (4 MB each), reorder/remove images, or use HTTPS image URLs. Uploaded images are stored in Neon. Publish changes to make the configuration visible to visitors. Clear backgrounds look best for rotating product cutouts.
+- Menu & pricing: add, edit and remove products, including names, descriptions, categories, images, colours, display order, prices, portion sizes and availability. Empty prices mean quote requests. Currency defaults to **GHS** and is editable in the website editor.
+- Website editor: edit brand identity, navigation, service options, all customer-facing page and form copy, images, footer, loading states, 404 page and full-screen sections. Each section can override its collection label, badge, side note and menu category. Add up to 12 images per carousel, upload PNG/JPEG/WebP files (4 MB each), reorder/remove images, or use HTTPS image URLs. Uploaded images are stored in Neon. The editor shows whether changes are unpublished, and its preview uses the current draft. Publish changes to make them visible to visitors.
+- Loading editor: set the image placeholder, product skeleton thumbnail, skeleton count, colours, corner radius, shimmer and error text. The editor includes a live skeleton preview.
 - Carousels rotate every five seconds while visible. Hover or keyboard focus pauses motion; manual arrows/swipes pause autoplay until Play is selected. Reduced-motion preferences disable autoplay and transitions. Arrow keys work when the carousel is focused. Single-image carousels disable rotation controls.
 
 ## Customer behaviour
@@ -64,9 +65,7 @@ Session cookies are HttpOnly, SameSite=Strict and Secure in production, with eig
 ## Verification
 
 ```sh
-npm run build
-node --test tests/server.test.mjs
-node tests/browser.mjs
+npm test
 ```
 
 The original frontend sources are retained in `src-before-refresh/` for comparison.

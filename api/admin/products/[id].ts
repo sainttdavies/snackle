@@ -60,6 +60,7 @@ export default async function handler(req: any, res: any) {
         json(res, 403, { error: 'Please refresh and try again.' });
         return;
       }
+      if(req.headers.origin!==(process.env.APP_ORIGIN||'')){json(res,403,{error:'Request origin is not allowed.'});return;}
       const result = await sql`DELETE FROM products WHERE id = ${id}`;
       if (result.count === 0) {
         json(res, 404, { error: 'Product not found.' });

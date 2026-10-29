@@ -6,5 +6,5 @@ export async function api<T = any>(path: string, method = 'GET', body?: unknown)
   if (data.csrf) csrf = data.csrf;
   return data;
 }
-export type Product = {id:string; name:string; category:string; description:string; image:string; unit:string; price:number|null; available:boolean; color:string};
-export function priceLabel(price: number | null, currency: string) { return price === null ? 'Price on request' : new Intl.NumberFormat('en-GH',{style:'currency',currency}).format(price); }
+export type Product = {id:string; name:string; category:string; description:string; image:string; unit:string; price:number|null; available:boolean; color:string; sortOrder?:number};
+export function priceLabel(price: number | null, currency: string, quoteLabel: string) { return price === null ? quoteLabel : new Intl.NumberFormat('en-GH',{style:'currency',currency}).format(price); }

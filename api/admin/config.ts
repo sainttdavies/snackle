@@ -2,6 +2,7 @@ import { getSql, ensureSchema } from '../../lib/db.js';
 import { json, getCookie, parseBody } from '../../lib/respond.js';
 import { createHash } from 'node:crypto';
 import {validSiteConfig} from '../../lib/validation.mjs';
+import {hydrateCustomization} from '../../shared/customization.mjs';
 
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
 
@@ -34,7 +35,8 @@ export default async function handler(req: any, res: any) {
       json(res, 400, { error: 'Check the content, image URLs and six-digit colours.' });
       return;
     }
-    await sql`INSERT INTO settings VALUES (1, ${JSON.stringify(body)}) ON CONFLICT (id) DO UPDATE SET value = ${JSON.stringify(body)}`;
+    const publicConfig={theme:body.theme,sections:body.sections,footer:body.footer,about:body.about,...hydrateCustomization(body)};
+    await sql`INSERT INTO settings VALUES (1, ${JSON.stringify(publicConfig)}) ON CONFLICT (id) DO UPDATE SET value = ${JSON.stringify(publicConfig)}`;
     json(res, 200, { ok: true });
   } catch (e: any) {
     json(res, 500, { error: e.message || 'Config save error' });

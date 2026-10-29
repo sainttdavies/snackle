@@ -1,5 +1,5 @@
 import { getSql, ensureSchema } from '../lib/db.js';
-import { json, checkOrigin, parseBody } from '../lib/respond.js';
+import { json, checkOrigin, parseBody, rateLimit } from '../lib/respond.js';
 import { randomBytes } from 'node:crypto';
 import {hydrateCustomization} from '../shared/customization.mjs';
 
@@ -16,13 +16,20 @@ export default async function handler(req: any, res: any) {
   try {
     await ensureSchema();
     const sql = getSql();
+    const ip=String(req.headers['x-forwarded-for']||req.socket?.remoteAddress||'unknown').split(',')[0].trim();
+    if(!await rateLimit(sql,`request:${ip}`,20,15*60*1000)){
+      res.setHeader('Retry-After','900');
+      json(res,429,{error:'Too many requests. Please try again later.'});
+      return;
+    }
     const settings = await sql`SELECT value FROM settings WHERE id = 1`.then(r => r[0]);
     const service = hydrateCustomization(settings ? JSON.parse(settings.value) : {}).service;
     const body = await parseBody(req);
-    const { kind, name, email, phone, date, notes = '', fulfilment, address = '', guests, eventType, country = 'Ghana', area, items } = body;
+    if(!body||typeof body!=='object'||Array.isArray(body)){json(res,400,{error:'Invalid request.'});return;}
+    const { kind, name, email, phone, date, notes = '', fulfilment, address = '', guests, eventType, country = service.country, area, items } = body;
     if (typeof name !== 'string' || name.trim().length < 2 || name.length > 120 ||
-        typeof email !== 'string' || !email.includes('@') || email.length > 254 ||
-        typeof phone !== 'string' || phone.length < 7 || phone.length > 40 ||
+        typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 ||
+        typeof phone !== 'string' || phone.length < 7 || phone.length > 40 || !/^[+\d\s()\-]+$/.test(phone) ||
         typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
         typeof notes !== 'string' || notes.length > 2000) {
       json(res, 400, { error: 'Check your contact details, preferred date and notes.' });
@@ -32,9 +39,9 @@ export default async function handler(req: any, res: any) {
       json(res, 400, { error: 'Invalid request type.' });
       return;
     }
-    const today = new Date().toLocaleDateString('en-CA',{timeZone:'Africa/Accra'});
+    const today = new Date().toLocaleDateString('en-CA',{timeZone:service.timezone});
     const allowedAreas = service.areas.split('\n').map((a:string)=>a.trim()).filter(Boolean);
-    if(date<today || Number.isNaN(Date.parse(date)) || country!==service.country || ((kind==='booking'||fulfilment==='delivery')&&!allowedAreas.includes(area))){
+    if(date<today || Number.isNaN(Date.parse(date)) || new Date(date).toISOString().slice(0,10)!==date || country!==service.country || ((kind==='booking'||fulfilment==='delivery')&&!allowedAreas.includes(area))){
       json(res,400,{error:'Choose a future date and an available service area.'});
       return;
     }
@@ -42,7 +49,7 @@ export default async function handler(req: any, res: any) {
     let total: number | null | undefined;
     if (kind === 'booking') {
       if(!service.bookingEnabled){json(res,400,{error:'Event enquiries are currently paused.'});return;}
-      if (!Number.isInteger(guests) || guests < 1 || guests > 10000 || typeof eventType !== 'string' || eventType.length < 2 || typeof address !== 'string' || address.length < 3) {
+      if (!Number.isInteger(guests) || guests < 1 || guests > 10000 || typeof eventType !== 'string' || eventType.length < 2 || eventType.length>100 || typeof address !== 'string' || address.length < 3 || address.length>500) {
         json(res, 400, { error: 'Check the guest count, occasion and event location.' });
         return;
       }
@@ -50,12 +57,12 @@ export default async function handler(req: any, res: any) {
       if((fulfilment==='pickup'&&!service.pickupEnabled)||(fulfilment==='delivery'&&!service.deliveryEnabled)){
         json(res,400,{error:'That fulfilment option is currently unavailable.'});return;
       }
-      if (!['pickup', 'delivery'].includes(fulfilment) || (fulfilment === 'delivery' && (!address || address.length < 5)) || !Array.isArray(items) || items.length < 1 || items.length > 20) {
+      if (!['pickup', 'delivery'].includes(fulfilment) || (fulfilment === 'delivery' && (typeof address!=='string'||address.length < 5||address.length>500)) || !Array.isArray(items) || items.length < 1 || items.length > 20) {
         json(res, 400, { error: 'Check your basket and delivery details.' });
         return;
       }
       const requested = items as Array<{ id?: unknown; quantity?: unknown }>;
-      if (requested.some((item) => typeof item.id !== 'string' || !Number.isInteger(item.quantity) || Number(item.quantity) < 1 || Number(item.quantity) > 99)) {
+      if (requested.some((item) => !item||typeof item.id !== 'string' || !Number.isInteger(item.quantity) || Number(item.quantity) < 1 || Number(item.quantity) > 99) || new Set(requested.map(item=>item.id)).size!==requested.length) {
         json(res, 400, { error: 'Check the products and quantities in your basket.' });
         return;
       }
@@ -78,7 +85,7 @@ export default async function handler(req: any, res: any) {
       }
       total = resolvedItems.some((item) => item.price === null)
         ? null
-        : resolvedItems.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
+        : Math.round(resolvedItems.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0)*100)/100;
       resolvedItems = resolvedItems.map(({ available: _available, ...item }) => item);
     }
     const id = `SN-${randomBytes(6).toString('hex').toUpperCase()}`;
